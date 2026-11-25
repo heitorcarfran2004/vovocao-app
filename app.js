@@ -662,6 +662,7 @@ function telaRotina() {
       <a class="cuid-card" href="#/rotina/${c.id}"><span class="num">${c.num}</span><span class="ico">${icoCuidado(c.id)}</span>
         <span style="flex:1;min-width:0"><b>${esc(c.nome)}</b><p>${md(c.frase)}</p>
         <span class="tags">${pr ? `<span class="tag ${pr === 'Prioridade agora' ? 't-at' : 't-ob'}">${pr}</span>` : ''}<span class="tag t-cinza">${c.secoes.length} partes</span></span></span></a>`; }).join('')}</div>
+    ${cardsExtras()}
     <div class="secao-tit"><h2>Ferramentas</h2></div>
     <div class="lista-cards">
       <a class="card-link" href="#/contar"><span class="ico">🫁</span><span class="txt"><b>Contar a respiração dormindo</b><span>30 segundos, o app faz a conta</span></span>${I.chev}</a>
@@ -1278,6 +1279,7 @@ function telaPerfil() {
       <p class="pequeno" style="margin-top:10px">Você acompanhava ${cnt.atencao + cnt.observar} de 7 sinais. ${P.radar && Object.values(P.radar).some((x) => x.raca) ? 'Os marcados como risco da raça subiram para Atenção.' : ''}</p></div>
     <div class="secao-tit"><h2>Riscos da raça</h2><a href="#/rotina/prevencao/doencas-raca">Ver ficha</a></div>
     <div class="card plano"><ul class="ul at">${(F.doencas || []).map((d) => `<li>${esc(d)}</li>`).join('')}</ul></div>
+    ${cardsExtras()}
     <div class="secao-tit"><h2>Registros</h2></div>
     <div class="lista-cards">
       <a class="card-link" href="#/resumo"><span class="ico">${I.doc}</span><span class="txt"><b>Resumo para o veterinário</b><span>Dados, remédios, check-ups e caroços numa tela só</span></span>${I.chev}</a>
@@ -1437,6 +1439,86 @@ function telaAssistente() {
   return { aba: 'hoje', titulo: 'Assistente 24h', pai: 'hoje', html };
 }
 
+// =====================================================================
+// 8b. Extras comprados no checkout (order bumps): Cozinha do Cão Idoso e Casa Adaptada
+//     Liberados neste aparelho pelo link do e-mail (?extra=cozinha / ?extra=casa, ver index.html).
+// =====================================================================
+const EXTRAS = window.EXTRAS || {};
+const RECEITAS = window.RECEITAS || [];
+const REC = Object.fromEntries(RECEITAS.map((r) => [r.id, r]));
+const CASA_P = window.CASA_PAGINAS || [];
+function extrasLiberados() { const l = LS.get('extras', []); return Object.keys(EXTRAS).filter((k) => Array.isArray(l) && l.includes(k)); }
+function cardsExtras() {
+  const l = extrasLiberados(); if (!l.length) return '';
+  return `<div class="secao-tit"><h2>Seus extras</h2></div><div class="lista-cards">${l.map((k) => { const e = EXTRAS[k]; return `
+    <a class="card-link" href="#/extras/${k}"><span class="ico">${e.emoji}</span><span class="txt"><b>${esc(e.nome)}</b><span>${esc(e.frase)}</span></span>${I.chev}</a>`; }).join('')}</div>`;
+}
+function telaExtras() {
+  const l = extrasLiberados();
+  const html = l.length ? `<h1 style="margin-top:6px">Seus extras</h1><p class="sub">Os guias que você levou junto com o plano.</p>${cardsExtras().replace(/<div class="secao-tit">.*?<\/div>/, '')}`
+    : `<div class="vazio"><div class="e">🎁</div>Nenhum extra liberado neste aparelho.<br>Abra o link que chegou no seu e-mail de compra.</div>`;
+  return { aba: 'rotina', titulo: 'Extras', pai: 'rotina', html };
+}
+function telaCozinha() {
+  const e = EXTRAS.cozinha; if (!extrasLiberados().includes('cozinha')) return telaExtras();
+  const cats = window.COZINHA_CATS || [['todas', 'Todas']];
+  const html = `<section class="faixa"><span class="ico">${e.emoji}</span><span class="rotulo" style="display:block;margin-top:14px">Extra · ${RECEITAS.length} receitas</span>
+      <h1 style="margin-top:6px">${esc(e.nome)}</h1><p>Petiscos naturais, macios e fáceis, pensados para ${pers('{o} {nome}')}.</p></section>
+    <div class="dobra porque-c" data-card style="margin-top:12px"><span class="rotulo">Antes de começar</span><p class="porque-t">As 6 regras da cozinha do velhinho</p>
+      <div class="det"><ul class="ul" style="margin-top:6px">${(window.COZINHA_REGRAS || []).map(([em, t, x]) => `<li><b>${em} ${esc(t)}.</b> ${esc(x)}</li>`).join('')}</ul></div>
+      <button class="ler-mais" type="button" data-abre>Ler as regras</button></div>
+    <div class="chips" style="margin-top:14px" id="cats">${cats.map(([k, t], i) => `<button class="chip${i === 0 ? ' on' : ''}" type="button" data-c="${k}">${t}</button>`).join('')}</div>
+    <div class="lista-cards" style="margin-top:12px">${RECEITAS.map((r, i) => `
+      <a class="card-link" href="#/extras/cozinha/${r.id}" data-cat="${r.cat}"><span class="ico">${r.emoji}</span><span class="txt"><small class="num-parte">Receita ${i + 1}</small><b>${esc(r.nome)}</b><span>${esc(r.textura)} · ${esc(r.tempo)} · rende ${esc(r.rende)}</span></span>${I.chev}</a>`).join('')}</div>
+    <p class="nota" style="margin-top:16px">Cão com doença nos rins, no coração, no fígado, diabetes ou dieta especial: confirme com o veterinário antes.</p>`;
+  return { aba: 'rotina', titulo: e.nome, pai: 'extras', html, ligar(root) {
+    const c = root.querySelector('#cats');
+    c.querySelectorAll('.chip').forEach((b) => { b.onclick = () => {
+      c.querySelectorAll('.chip').forEach((x) => x.classList.toggle('on', x === b));
+      root.querySelectorAll('[data-cat]').forEach((a) => { a.hidden = !(b.dataset.c === 'todas' || a.dataset.cat === b.dataset.c); });
+    }; });
+  } };
+}
+function telaReceita(id) {
+  const r = REC[id]; if (!r || !extrasLiberados().includes('cozinha')) return telaCozinha();
+  const i = RECEITAS.indexOf(r); const prox = RECEITAS[i + 1];
+  const html = `<div class="sec-cab"><span class="em-g">${r.emoji}</span><div><span class="rotulo">Receita ${i + 1} de ${RECEITAS.length}</span><h1 style="margin-top:4px;font-size:25px">${esc(r.nome)}</h1></div></div>
+    <div class="contagem" style="margin-top:10px"><span class="tag t-vd">🦷 ${esc(r.textura)}</span><span class="tag t-cinza">⏱ ${esc(r.tempo)}</span><span class="tag t-cinza">🍽 Rende ${esc(r.rende)}</span></div>
+    <div class="secao-tit"><h2>Ingredientes</h2><span class="pequeno">toque para marcar</span></div>
+    <div class="checklist">${r.ing.map((x) => `<button class="ck" type="button" aria-pressed="false"><span class="box">${I.check}</span><span><b>${esc(x)}</b></span></button>`).join('')}</div>
+    <div class="secao-tit"><h2>Modo de preparo</h2></div>
+    <div class="card plano"><ol class="ol">${r.passos.map((p) => `<li>${esc(p)}</li>`).join('')}</ol></div>
+    ${r.atencao ? `<div class="aviso-c ob" style="margin-top:12px"><span class="ic">⚠️</span><div><b>Atenção</b><p>${esc(r.atencao)}</p></div></div>` : ''}
+    <div class="aviso-c vd" style="margin-top:12px"><span class="ic">💡</span><div><b>Dica</b><p>${esc(r.dica)}</p></div></div>
+    <div class="card" style="margin-top:12px"><div class="bloco-tit">Na medida certa para ${N()}</div>
+      <ul class="ul" style="margin-top:8px"><li>Comece com 1 pedacinho e observe por 24 horas.</li><li>Petisco é extra: até 10% do que ${pers('{ele}')} come no dia.</li><li>Guardar: ${esc(r.guardar)}</li></ul></div>
+    ${prox ? `<a class="card-link proxima" href="#/extras/cozinha/${prox.id}" style="margin-top:22px"><span class="ico">${prox.emoji}</span><span class="txt"><small class="num-parte">Próxima receita</small><b>${esc(prox.nome)}</b></span>${I.chev}</a>`
+      : `<a class="btn sec" href="#/extras/cozinha" style="margin-top:22px">Voltar para as receitas</a>`}
+    <p class="nota" style="margin-top:16px">Sem sal, sem cebola e sem alho. Cão com doença nos rins, no coração, no fígado, diabetes ou dieta especial: confirme com o veterinário antes.</p>`;
+  return { aba: 'rotina', titulo: 'Receita', pai: 'extras/cozinha', html, ligar(root) {
+    root.querySelectorAll('.ck').forEach((b) => { b.onclick = () => { const on = !b.classList.contains('on'); b.classList.toggle('on', on); b.setAttribute('aria-pressed', on); }; });
+  } };
+}
+function telaCasa() {
+  const e = EXTRAS.casa; if (!extrasLiberados().includes('casa')) return telaExtras();
+  const html = `<section class="faixa"><span class="ico">${e.emoji}</span><span class="rotulo" style="display:block;margin-top:14px">Extra · ${CASA_P.length} páginas ilustradas</span>
+      <h1 style="margin-top:6px">${esc(e.nome)}</h1><p>${esc(e.frase)}</p></section>
+    <div class="lista-cards" style="margin-top:14px">${CASA_P.map(([n, t, em]) => `
+      <a class="card-link" href="#/extras/casa/${n}"><span class="ico">${em}</span><span class="txt"><small class="num-parte">Página ${+n}</small><b>${esc(t)}</b></span>${I.chev}</a>`).join('')}</div>
+    <p class="nota" style="margin-top:16px">Faça uma mudança por semana: ${pers('{ele}')} se acostuma melhor aos poucos.</p>`;
+  return { aba: 'rotina', titulo: e.nome, pai: 'extras', html };
+}
+function telaCasaPagina(n) {
+  const i = CASA_P.findIndex((p) => p[0] === n); if (i < 0 || !extrasLiberados().includes('casa')) return telaCasa();
+  const [, t] = CASA_P[i]; const ant = CASA_P[i - 1], prox = CASA_P[i + 1];
+  const html = `<span class="rotulo">Página ${i + 1} de ${CASA_P.length}</span><h1 style="margin-top:4px;font-size:23px">${esc(t)}</h1>
+    <img src="extras/casa/${n}.webp" alt="${esc(t)}" loading="eager" style="display:block;width:100%;height:auto;margin-top:14px;border-radius:16px;box-shadow:var(--sombra);background:#fff">
+    <div class="linha-btns" style="display:flex;gap:10px;margin-top:16px">
+      ${ant ? `<a class="btn sec" style="flex:1" href="#/extras/casa/${ant[0]}">← Anterior</a>` : ''}
+      ${prox ? `<a class="btn" style="flex:1" href="#/extras/casa/${prox[0]}">Próxima →</a>` : `<a class="btn" style="flex:1" href="#/extras/casa">Ver todas</a>`}</div>`;
+  return { aba: 'rotina', titulo: 'Casa Adaptada', pai: 'extras/casa', html };
+}
+
 function telaNaoAchei() { return { aba: 'hoje', titulo: 'Não encontrado', pai: 'hoje', html: '<div class="vazio"><div class="e">🐾</div>Esta tela não existe.<br><a href="#/hoje">Voltar para o início</a></div>' }; }
 
 // =====================================================================
@@ -1465,6 +1547,11 @@ const ROTAS = [
   [/^dias-bons$/, () => telaDiasBons()],
   [/^dias-bons\/avaliar$/, () => telaAvaliar()],
   [/^assistente$/, () => telaAssistente()],
+  [/^extras$/, () => telaExtras()],
+  [/^extras\/cozinha$/, () => telaCozinha()],
+  [/^extras\/cozinha\/([\w-]+)$/, (m) => telaReceita(m[1])],
+  [/^extras\/casa$/, () => telaCasa()],
+  [/^extras\/casa\/(\d+)$/, (m) => telaCasaPagina(m[1])],
 ];
 let ATUAL = null; let ROTA_ANT = '';
 function rotaAtual() { const h = (location.hash || '#/hoje').replace(/^#\/?/, ''); const [r, q] = h.split('?'); return { r: r || 'hoje', q: new URLSearchParams(q || '') }; }

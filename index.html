@@ -22,12 +22,23 @@
 
 <!-- dados: fichas do quiz (mesma fonte do quiz), ficha completa da raça, conteúdo do app -->
 <script>
+// Extras do checkout (order bumps): o link do e-mail traz ?extra=cozinha ou ?extra=casa (ou os dois, separados por vírgula).
+(function () { try { var m = location.search.match(/[?&]extra=([^&]+)/); if (!m) return;
+  var novos = decodeURIComponent(m[1]).split(","), k = "maisanos:extras", l = [];
+  try { l = JSON.parse(localStorage.getItem(k) || "[]") || []; } catch (e) {}
+  novos.forEach(function (x) { x = x.trim(); if (x && l.indexOf(x) < 0) l.push(x); }); localStorage.setItem(k, JSON.stringify(l));
+  var resto = location.search.replace(/([?&])extra=[^&]*&?/, "$1").replace(/[?&]$/, "");
+  history.replaceState(null, "", location.pathname + resto + (location.hash || "#/extras")); } catch (e) {} })();
+</script>
+<script>
 // O quiz mora em outro domínio (vovocao.vercel.app): ele manda o cadastro no link (?perfil=base64). Aqui ele vira o localStorage do contrato.
 (function () { try { var m = location.search.match(/[?&]perfil=([^&]+)/); if (!m) return;
   var b = decodeURIComponent(m[1]).replace(/-/g, "+").replace(/_/g, "/"); var j = decodeURIComponent(escape(atob(b))); JSON.parse(j);
   localStorage.setItem("maisanos:perfil", j); history.replaceState(null, "", location.pathname + location.hash); } catch (e) {} })();
 </script>
+
 <script src="dados/racas-quiz.js"></script>
+<script src="dados/extras.js"></script>
 <script src="dados/racas-completo.js"></script>
 <script src="dados/rotina.js"></script>
 <script src="dados/cuidados.js"></script>
